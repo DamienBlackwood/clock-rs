@@ -155,6 +155,50 @@ impl FromStr for Color {
     }
 }
 
+pub fn next_color(current: &Color) -> Color {
+    match current {
+        Color::Black => Color::Red,
+        Color::Red => Color::Green,
+        Color::Green => Color::Yellow,
+        Color::Yellow => Color::Blue,
+        Color::Blue => Color::Magenta,
+        Color::Magenta => Color::Cyan,
+        Color::Cyan => Color::White,
+        Color::White => Color::BrightBlack,
+        Color::BrightBlack => Color::BrightRed,
+        Color::BrightRed => Color::BrightGreen,
+        Color::BrightGreen => Color::BrightYellow,
+        Color::BrightYellow => Color::BrightBlue,
+        Color::BrightBlue => Color::BrightMagenta,
+        Color::BrightMagenta => Color::BrightCyan,
+        Color::BrightCyan => Color::BrightWhite,
+        Color::BrightWhite => Color::Black,
+        Color::Rgb { .. } => Color::White,
+    }
+}
+
+pub fn prev_color(current: &Color) -> Color {
+    match current {
+        Color::Black => Color::BrightWhite,
+        Color::Red => Color::Black,
+        Color::Green => Color::Red,
+        Color::Yellow => Color::Green,
+        Color::Blue => Color::Yellow,
+        Color::Magenta => Color::Blue,
+        Color::Cyan => Color::Magenta,
+        Color::White => Color::Cyan,
+        Color::BrightBlack => Color::White,
+        Color::BrightRed => Color::BrightBlack,
+        Color::BrightGreen => Color::BrightRed,
+        Color::BrightYellow => Color::BrightGreen,
+        Color::BrightBlue => Color::BrightYellow,
+        Color::BrightMagenta => Color::BrightBlue,
+        Color::BrightCyan => Color::BrightMagenta,
+        Color::BrightWhite => Color::BrightCyan,
+        Color::Rgb { .. } => Color::White,
+    }
+}
+
 impl<'de> Deserialize<'de> for Color {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

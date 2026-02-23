@@ -27,6 +27,7 @@ use crate::{
         time_zone::TimeZone,
         Clock,
     },
+    color::{next_color, prev_color},
     config::Config,
     error::Error,
 };
@@ -41,7 +42,7 @@ impl State {
         let mut config = Config::parse()?;
         let mode = args.mode.clone();
 
-        args.overwrite(&mut config);
+        args.overwrite(&mut config)?;
 
         let clock_mode = Self::clock_mode(mode, &config)?;
         let mut clock = Clock::new(config, clock_mode);
@@ -152,6 +153,59 @@ impl State {
                         let (width, height) = terminal::size()?;
                         self.refresh_display(width, height)?;
                     }
+                    // keybinds for all of the commands
+                    KeyEvent {
+                        code: KeyCode::Char('-'),
+                        kind: KeyEventKind::Press,
+                        modifiers: KeyModifiers::NONE,
+                        ..
+                    } => {
+                        let ms = self.clock.interval.as_millis() as u64;
+                        self.clock.interval = Duration::from_millis(ms.saturating_sub(100).max(100));
+                    }
+                    KeyEvent {
+                        code: KeyCode::Char('+' | '='),
+                        kind: KeyEventKind::Press,
+                        modifiers: KeyModifiers::NONE,
+                        ..
+                    } => {
+                        let ms = self.clock.interval.as_millis() as u64;
+                        self.clock.interval = Duration::from_millis((ms + 100).min(9900));
+                    }
+                    KeyEvent {
+                        code: KeyCode::Char('c'),
+                        kind: KeyEventKind::Press,
+                        modifiers: KeyModifiers::NONE,
+                        ..
+                    } => {
+                        self.clock.color = next_color(&self.clock.color);
+                    }
+                    KeyEvent {
+                        code: KeyCode::Char('C'),
+                        kind: KeyEventKind::Press,
+                        modifiers: KeyModifiers::SHIFT,
+                        ..
+                    } => {
+                        self.clock.color = prev_color(&self.clock.color);
+                    }
+                    KeyEvent {
+                        code: KeyCode::Char('b' | 'B'),
+                        kind: KeyEventKind::Press,
+                        modifiers: KeyModifiers::NONE | KeyModifiers::SHIFT,
+                        ..
+                    } => {
+                        self.clock.blink = !self.clock.blink;
+                    }
+                    KeyEvent {
+                        code: KeyCode::Char('s' | 'S'),
+                        kind: KeyEventKind::Press,
+                        modifiers: KeyModifiers::NONE | KeyModifiers::SHIFT,
+                        ..
+                    } => {
+                        self.clock.hide_seconds = !self.clock.hide_seconds;
+                        let (width, height) = terminal::size()?;
+                        self.refresh_display(width, height)?;
+                    }
                     _ => (),
                 },
                 Event::Resize(width, height) => self.refresh_display(width, height)?,
@@ -217,7 +271,34 @@ impl State {
         let mut buffered_writer = BufWriter::new(lock);
 
         self.clock.fmt(&mut buffered_writer)?;
+
+        // pin the status bar
+        self.render_statusbar(&mut buffered_writer, width, height)?;
+
         buffered_writer.flush()?;
+
+        Ok(())
+    }
+
+    fn render_statusbar(&self, w: &mut BufWriter<io::StdoutLock<'_>>, width: u16, height: u16) -> Result<(), Error> {
+        let ms = self.clock.interval.as_millis();
+        let right = format!(" {}ms \u{2014}", ms); // " 200ms —"
+        let left = "\u{2014} b: Blink | s: Secs | c: Color | -/+: Interval "; // "— b: ..."
+
+        let left_len = left.chars().count();
+        let right_len = right.chars().count();
+        let total = width as usize;
+
+        // fill dashes between left and right and clamp we never go negative
+        let fill_count = total.saturating_sub(left_len + right_len);
+        let fill = "\u{2014}".repeat(fill_count);
+
+        // move to the bottom row and write everything
+        write!(
+            w,
+            "\x1B[{};1H\x1B[2m{left}{fill}{right}\x1B[0m",
+            height,
+        )?;
 
         Ok(())
     }

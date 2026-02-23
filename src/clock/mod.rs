@@ -35,7 +35,7 @@ pub struct Clock {
 impl Clock {
     const WIDTH: u16 = 51;
     const WIDTH_NO_SECONDS: u16 = 32;
-    const HEIGHT: u16 = 7;
+    const HEIGHT: u16 = 9;
     const SUFFIX_LEN: u16 = 5;
     const AM_SUFFIX: &'static str = " [AM]";
     const PM_SUFFIX: &'static str = " [PM]";
