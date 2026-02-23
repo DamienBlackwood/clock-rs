@@ -76,7 +76,7 @@ impl Counter {
 
             if secs == 0 && kill {
                 State::exit();
-                process::exit(1);
+                process::exit(0);
             }
         }
 

@@ -1,14 +1,18 @@
 pub mod args;
 
 use {super::config::Config, args::Args};
+use crate::error::Error;
 
 impl Args {
-    pub fn overwrite(self, config: &mut Config) {
+    pub fn overwrite(self, config: &mut Config) -> Result<(), Error> {
         if let Some(color) = self.color {
             config.general.color = color;
         }
 
         if let Some(interval) = self.interval {
+            if interval == 0 {
+                return Err(Error::ZeroInterval);
+            }
             config.general.interval = interval;
         }
 
@@ -43,5 +47,7 @@ impl Args {
         if self.hide_seconds {
             config.date.hide_seconds = true;
         }
+
+        Ok(())
     }
 }

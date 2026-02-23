@@ -22,6 +22,8 @@ pub enum Error {
     ReadFile { path: String, err: String },
     #[error("failed to parse configuration file `{path}`:\n{err}")]
     ParseToml { path: String, err: String },
+    #[error("interval must be greater than 0")]
+    ZeroInterval,
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
 }
