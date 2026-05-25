@@ -1,4 +1,11 @@
-Copyright 2024 Oughie oughery@gmail.com
+clock-rs
+Copyright 2024 Oughie <oughery@gmail.com>
+
+Portions Copyright 2026 Damien Blackwood <lifesparts@gmail.com>
+This product is a fork of the original clock-rs and contains modifications,
+including: runtime keybindings (color/blink/seconds/interval/plain toggle),
+auto-polling interval, persistent runtime tweaks (writes back to conf.toml),
+status bar with hint display, and other UX changes.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
