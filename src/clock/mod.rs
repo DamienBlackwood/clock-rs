@@ -23,6 +23,7 @@ pub struct Clock {
     pub mode: ClockMode,
     pub padding: Padding,
     pub interval: Duration,
+    pub interval_auto: bool,
     pub x_pos: Position,
     pub y_pos: Position,
     pub color: Color,
@@ -41,10 +42,19 @@ impl Clock {
     const PM_SUFFIX: &'static str = " [PM]";
 
     pub fn new(config: Config, mode: ClockMode) -> Self {
+        let interval_auto = config.general.interval.is_none();
+        let interval = Duration::from_millis(
+            config
+                .general
+                .interval
+                .unwrap_or_else(|| Self::auto_interval(config.general.blink)),
+        );
+
         Self {
             mode,
             padding: Padding::default(),
-            interval: Duration::from_millis(config.general.interval),
+            interval,
+            interval_auto,
             x_pos: config.position.x,
             y_pos: config.position.y,
             color: config.general.color,
@@ -52,6 +62,14 @@ impl Clock {
             hide_seconds: config.date.hide_seconds,
             blink: config.general.blink,
             bold: config.general.bold,
+        }
+    }
+
+    pub fn auto_interval(blink: bool) -> u64 {
+        if blink {
+            200
+        } else {
+            1000
         }
     }
 

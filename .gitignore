@@ -1,1 +1,5 @@
 /target
+
+# annoying mac stuff
+src/.DS_Store
+.DS_Store

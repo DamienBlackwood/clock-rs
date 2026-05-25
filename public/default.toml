@@ -3,7 +3,7 @@
 
 [general]
 color = "white"
-interval = 200
+# interval = 200  # omit for auto: 200ms when blink, 1000ms otherwise
 blink = false
 bold = false
 

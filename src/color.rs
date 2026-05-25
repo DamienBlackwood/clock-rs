@@ -9,7 +9,7 @@ macro_rules! esc {
     };
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub enum Color {
     Black,
     Red,
@@ -102,6 +102,28 @@ impl Color {
             Self::Rgb { r, g, b } => return format!("\x1B[48;2;{r};{g};{b}m"),
         }
         .to_string()
+    }
+
+    pub fn as_toml_string(&self) -> String {
+        match self {
+            Self::Black => "black".into(),
+            Self::Red => "red".into(),
+            Self::Green => "green".into(),
+            Self::Yellow => "yellow".into(),
+            Self::Blue => "blue".into(),
+            Self::Magenta => "magenta".into(),
+            Self::Cyan => "cyan".into(),
+            Self::White => "white".into(),
+            Self::BrightBlack => "bright-black".into(),
+            Self::BrightRed => "bright-red".into(),
+            Self::BrightGreen => "bright-green".into(),
+            Self::BrightYellow => "bright-yellow".into(),
+            Self::BrightBlue => "bright-blue".into(),
+            Self::BrightMagenta => "bright-magenta".into(),
+            Self::BrightCyan => "bright-cyan".into(),
+            Self::BrightWhite => "bright-white".into(),
+            Self::Rgb { r, g, b } => format!("#{:02x}{:02x}{:02x}", r, g, b),
+        }
     }
 
     fn parse_rgb_component(hex: &str) -> Result<u8, String> {

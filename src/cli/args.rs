@@ -7,7 +7,7 @@ use serde::Deserialize;
 use crate::{color::Color, position::Position};
 
 #[derive(Parser)]
-#[clap(version = "v0.1.33, (c) 2024 Oughie", hide_possible_values = true, styles = Self::STYLES)]
+#[clap(version = "v0.2.0, (c) 2024 Oughie, fork (c) 2026 Damien Blackwood", hide_possible_values = true, styles = Self::STYLES)]
 pub struct Args {
     #[clap(subcommand)]
     pub mode: Option<Mode>,
@@ -41,6 +41,9 @@ pub struct Args {
     #[doc = "Do not show seconds"]
     #[clap(long, short = 's')]
     pub hide_seconds: bool,
+    #[doc = "Hide the status bar (just the time)"]
+    #[clap(long, short = 'p')]
+    pub plain: bool,
 }
 
 impl Args {

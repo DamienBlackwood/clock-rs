@@ -28,12 +28,14 @@ use crate::{
         Clock,
     },
     color::{next_color, prev_color},
-    config::Config,
+    config::{toml_bool, toml_int, toml_str, Change, Config, ConfigWriter},
     error::Error,
 };
 
 pub struct State {
     clock: Clock,
+    plain: bool,
+    baseline: Config,
 }
 
 impl State {
@@ -41,16 +43,18 @@ impl State {
         let args = Args::parse();
         let mut config = Config::parse()?;
         let mode = args.mode.clone();
+        let plain = args.plain;
 
         args.overwrite(&mut config)?;
 
+        let baseline = config.clone();
         let clock_mode = Self::clock_mode(mode, &config)?;
         let mut clock = Clock::new(config, clock_mode);
 
         let (width, height) = terminal::size().map_err(Error::Io)?;
         clock.update_padding(width, height)?;
 
-        Ok(Self { clock })
+        Ok(Self { clock, plain, baseline })
     }
 
     fn clock_mode(mode: Option<Mode>, config: &Config) -> Result<ClockMode, Error> {
@@ -161,7 +165,12 @@ impl State {
                         ..
                     } => {
                         let ms = self.clock.interval.as_millis() as u64;
-                        self.clock.interval = Duration::from_millis(ms.saturating_sub(100).max(100));
+                        let raw = ms.saturating_sub(100).max(100);
+                        let auto = Clock::auto_interval(self.clock.blink);
+                        // snap to auto if step crossed it (going down through auto)
+                        let new_ms = if ms > auto && raw < auto { auto } else { raw };
+                        self.clock.interval = Duration::from_millis(new_ms);
+                        self.clock.interval_auto = new_ms == auto;
                     }
                     KeyEvent {
                         code: KeyCode::Char('+' | '='),
@@ -170,7 +179,12 @@ impl State {
                         ..
                     } => {
                         let ms = self.clock.interval.as_millis() as u64;
-                        self.clock.interval = Duration::from_millis((ms + 100).min(9900));
+                        let raw = (ms + 100).min(9900);
+                        let auto = Clock::auto_interval(self.clock.blink);
+                        // snap to auto if step crossed it (going up through auto)
+                        let new_ms = if ms < auto && raw > auto { auto } else { raw };
+                        self.clock.interval = Duration::from_millis(new_ms);
+                        self.clock.interval_auto = new_ms == auto;
                     }
                     KeyEvent {
                         code: KeyCode::Char('c'),
@@ -195,6 +209,10 @@ impl State {
                         ..
                     } => {
                         self.clock.blink = !self.clock.blink;
+                        if self.clock.interval_auto {
+                            self.clock.interval =
+                                Duration::from_millis(Clock::auto_interval(self.clock.blink));
+                        }
                     }
                     KeyEvent {
                         code: KeyCode::Char('s' | 'S'),
@@ -203,6 +221,16 @@ impl State {
                         ..
                     } => {
                         self.clock.hide_seconds = !self.clock.hide_seconds;
+                        let (width, height) = terminal::size()?;
+                        self.refresh_display(width, height)?;
+                    }
+                    KeyEvent {
+                        code: KeyCode::Char('h' | 'H'),
+                        kind: KeyEventKind::Press,
+                        modifiers: KeyModifiers::NONE | KeyModifiers::SHIFT,
+                        ..
+                    } => {
+                        self.plain = !self.plain;
                         let (width, height) = terminal::size()?;
                         self.refresh_display(width, height)?;
                     }
@@ -229,13 +257,24 @@ impl State {
     }
 
     fn reload_config(&mut self) -> Result<(), Error> {
-        let clock = &mut self.clock;
+        // flush any pending tweaks first so they aren't wiped by reload
+        self.persist_changes();
+
         let config = Config::parse()?;
+        self.baseline = config.clone();
+        let clock = &mut self.clock;
 
         clock.color = config.general.color;
-        clock.interval = Duration::from_millis(config.general.interval);
         clock.blink = config.general.blink;
         clock.bold = config.general.bold;
+
+        clock.interval_auto = config.general.interval.is_none();
+        clock.interval = Duration::from_millis(
+            config
+                .general
+                .interval
+                .unwrap_or_else(|| Clock::auto_interval(clock.blink)),
+        );
 
         clock.x_pos = config.position.x;
         clock.y_pos = config.position.y;
@@ -272,8 +311,9 @@ impl State {
 
         self.clock.fmt(&mut buffered_writer)?;
 
-        // pin the status bar
-        self.render_statusbar(&mut buffered_writer, width, height)?;
+        if !self.plain {
+            self.render_statusbar(&mut buffered_writer, width, height)?;
+        }
 
         buffered_writer.flush()?;
 
@@ -281,9 +321,12 @@ impl State {
     }
 
     fn render_statusbar(&self, w: &mut BufWriter<io::StdoutLock<'_>>, width: u16, height: u16) -> Result<(), Error> {
-        let ms = self.clock.interval.as_millis();
-        let right = format!(" {}ms \u{2014}", ms); // " 200ms —"
-        let left = "\u{2014} b: Blink | s: Secs | c: Color | -/+: Interval "; // "— b: ..."
+        let right = if self.clock.interval_auto {
+            " auto \u{2014}".to_string()
+        } else {
+            format!(" {}ms \u{2014}", self.clock.interval.as_millis())
+        };
+        let left = "\u{2014} b: Blink | s: Secs | c: Color | -/+: Interval | h: Hide "; // "— b: ..."
 
         let left_len = left.chars().count();
         let right_len = right.chars().count();
@@ -304,8 +347,63 @@ impl State {
     }
 }
 
+impl State {
+    fn persist_changes(&self) {
+        let path = match Config::save_path() {
+            Ok(p) => p,
+            Err(_) => return,
+        };
+
+        let base = &self.baseline;
+        let clock = &self.clock;
+        let color_str = clock.color.as_toml_string();
+        let mut changes: Vec<Change> = Vec::new();
+
+        if clock.color != base.general.color {
+            changes.push(Change::Set("general", "color", toml_str(&color_str)));
+        }
+        if clock.blink != base.general.blink {
+            changes.push(Change::Set("general", "blink", toml_bool(clock.blink)));
+        }
+        if clock.bold != base.general.bold {
+            changes.push(Change::Set("general", "bold", toml_bool(clock.bold)));
+        }
+
+        let current_interval = if clock.interval_auto {
+            None
+        } else {
+            Some(clock.interval.as_millis() as u64)
+        };
+        if current_interval != base.general.interval {
+            match current_interval {
+                Some(ms) => changes.push(Change::Set("general", "interval", toml_int(ms as i64))),
+                None => changes.push(Change::Remove("general", "interval")),
+            }
+        }
+
+        if clock.x_pos != base.position.x {
+            changes.push(Change::Set("position", "horizontal", toml_str(clock.x_pos.as_toml_str())));
+        }
+        if clock.y_pos != base.position.y {
+            changes.push(Change::Set("position", "vertical", toml_str(clock.y_pos.as_toml_str())));
+        }
+        if clock.use_12h != base.date.use_12h {
+            changes.push(Change::Set("date", "use_12h", toml_bool(clock.use_12h)));
+        }
+        if clock.hide_seconds != base.date.hide_seconds {
+            changes.push(Change::Set("date", "hide_seconds", toml_bool(clock.hide_seconds)));
+        }
+
+        if changes.is_empty() {
+            return;
+        }
+        let _ = ConfigWriter::write(&path, &changes);
+    }
+}
+
 impl Drop for State {
     fn drop(&mut self) {
+        self.persist_changes();
         Self::exit();
     }
 }

@@ -1,273 +1,63 @@
-# clock-rs
+# clock-rs (fork)
 
-[![crates.io](https://img.shields.io/crates/v/clock-rs.svg)](https://crates.io/crates/clock-rs)
-[![License](https://img.shields.io/github/license/Oughie/clock-rs)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/Oughie/clock-rs)](https://github.com/Oughie/clock-rs/stargazers)
+> Want a beautifully minimal terminal clock? Use the original: **[Oughie/clock-rs](https://github.com/Oughie/clock-rs)**.
+>
+> This repo is my personal fork, with the same core but just tweaked for me.
+>
+> You might like it too, ¯\\\_(ツ)\_/¯
 
-A modern, digital clock that _effortlessly_ runs in your terminal.
+![Presentation](public/my-presentation.png)
 
-![Presentation](public/presentation.png)
-
-## Table of Contents
-
-- [Introduction](#introduction)
-- [Installation](#installation)
-  - [Using Cargo](#using-cargo)
-  - [Using a package manager](#using-a-package-manager)
-  - [Building from source](#building-from-source)
-- [Usage](#usage)
-  - [Reloading the configuration](#reloading-the-configuration)
-  - [Shell completion](#shell-completion)
-- [Configuration](#configuration)
-  - [Fields](#fields)
-  - [Example](#example)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Introduction
-
-`clock-rs` is a terminal-based clock written in Rust, designed to be a new alternative to [tty-clock](https://github.com/xorg62/tty-clock).  
-It supports all major platforms and offers several improvements, which include:
-
-- The use of a single configuration file to manage its settings, with the ability to override them through the command line,
-- Many additional features such as a timer and a stopwatch,
-- And greater flexibility as well as better user experience!
-
-## Installation
-
-### Using Cargo
-
-To install `clock-rs` globally using Cargo, simply run the following command:
-
-```
-$ cargo install clock-rs
-```
-
-You can then run the executable via the `clock-rs` command.
-
-### Using a package manager
-
-#### Arch Linux
-
-A package is available from the [AUR](https://aur.archlinux.org/packages/clock-rs-git) (Arch User Repository). To install it, use your preferred AUR manager:
-
-```
-$ yay -S clock-rs-git
-```
-
-or manually clone from the AUR:
-
-```
-$ git clone https://aur.archlinux.org/clock-rs-git.git && cd clock-rs-git && makepkg -si
-```
-
-#### NetBSD
-
-A package is available from the official repositories. To install it, simply run:
-
-```
-# pkgin install clock-rs
-```
-
-#### NixOS
-
-`clock-rs` is available in the [Nixpkgs](https://search.nixos.org/packages?channel=unstable&show=clock-rs&from=0&size=50&sort=relevance&type=packages&query=clock-rs) repository. To install it on NixOS, use the following command:
-
-```
-$ nix-env -iA nixos.clock-rs
-```
-
-If you use Nix on a different operating system, use either of the following commands:
+## Install
 
 ```sh
-$ nix-env -iA nixpkgs.clock-rs # Without flakes 
-$ nix profile install nixpkgs#clock-rs # With flakes
+cargo install --git https://github.com/DamienBlackwood/clock-rs.git
 ```
 
-> [!CAUTION]
-> Using `nix-env` is generally unrecommended, since it requires you to manually manage installed packages. Consider using `$ nix-shell -p clock-rs` to make the application temporarily available instead.
+Then run `clock-rs`.
 
-You could also add the following to your `configuration.nix`:
+## What's different from the original
 
-```nix
-environment.systemPackages = with pkgs; [
-    clock-rs
-    # ...
-];
-```
+The core is the same, but some tiny tweaks have been done. 
 
-If you use Home-Manager to configure your dotfiles, you can use the following to set up `clock-rs` declaratively:
+See the original repos docs  [here](https://github.com/Oughie/clock-rs/blob/main/README.md) for the full picture!
 
-```nix
-programs.clock-rs = {
-  enable = true;
+- **Status bar** at the bottom with live keybind hints (inspired by [mactop](https://github.com/metaspartan/mactop)). Toggle with <kbd>h</kbd>, or launch with `--plain` / `-p` to hide it.
+- **Auto interval** — polling interval picks itself: `200ms` when blink is on, `1000ms` otherwise. Set `general.interval` (or pass `-i`) to override.
+- **Runtime toggles** for everything that used to be config-only.
+- **Auto-save** — runtime tweaks (color, blink, seconds, position, interval, etc.) persist to `conf.toml` on exit. Comments + formatting in your config file are preserved.
 
-  settings = {
-    general = {
-      color = "magenta";
-      interval = 250;
-      blink = true;
-      bold = true;
-    };
+### Runtime keys
 
-    position = {
-      horizontal = "center";
-      vertical = "center";
-    };
+| Key                                          |Action                                |
+| -------------------------------------------- | ------------------------------------- |
+| <kbd>h</kbd> / <kbd>H</kbd>                  | Toggle status bar (plain mode)        |
+| <kbd>b</kbd> / <kbd>B</kbd>                  | Toggle colon blink                    |
+| <kbd>s</kbd> / <kbd>S</kbd>                  | Toggle seconds                        |
+| <kbd>c</kbd> / <kbd>C</kbd>                  | Cycle clock color (next / previous)   |
+| <kbd>-</kbd> / <kbd>+</kbd>                  | Decrease / increase polling interval  |
 
-    date = {
-      fmt = "%A, %B %d, %Y";
-      use_12h = true;
-      utc = true;
-      hide_seconds = true;
-    };
-  };
-};
-```
+Origina keys like (<kbd>P</kbd> pause, <kbd>R</kbd> restart, <kbd>Q</kbd>/<kbd>Esc</kbd>/<kbd>Ctrl+C</kbd> quit, <kbd>Ctrl+R</kbd> reload config) still work.
 
-### Building from source
+### New flags
 
-If you prefer installing `clock-rs` from source, follow these steps:
+| Flag                | Description                                   |
+| ------------------- | --------------------------------------------- |
+| `-p`, `--plain`     | Hide the status bar (if you want it like the OG)          |
 
-1. Download the repository from the [releases](https://github.com/Oughie/clock-rs/releases/) page or clone it using `$ git clone https://github.com/Oughie/clock-rs`.
+### Auto interval
 
-2. Depending on your platform, extract the archive and navigate into its directory.
+Leave `general.interval` out of `conf.toml` (or pass nothing on the CLI) to get the auto behaviour:
 
-3. Inside the directory, run `$ cargo build --release` to build the application manually. This will place the executable inside the `clock-rs/target/release` directory. However, if you want to install it globally instead, run `$ cargo install --path .`.
+- blink on → `200ms` (smooth colon flicker)
+- blink off → `1000ms` (1 tick/sec, idle CPU)
 
-## Usage
+However, pressing <kbd>-</kbd> / <kbd>+</kbd> or setting `general.interval`  switches it to manua if you like that.
 
-```
-Usage: clock-rs [OPTIONS] [COMMAND]
+### Everything else
 
-Commands:
-  clock      Display the current time (default)
-  timer      Create a timer (5 minutes if no time is specified)
-  stopwatch  Start a stopwatch
-  help       Print this message or the help of the given subcommand(s)
-
-Options:
-  -c, --color <COLOR>        Specify the clock color
-  -i, --interval <INTERVAL>  Set the polling interval in milliseconds
-  -B, --blink                Set the colon to blink
-  -b, --bold                 Use bold text
-  -x, --x-pos <X_POS>        Set the position along the horizontal axis
-  -y, --y-pos <Y_POS>        Set the position along the vertical axis
-      --fmt <FMT>            Set the date format
-  -t                         Use the 12h format
-      --utc                  Use UTC time
-  -s, --hide-seconds         Do not show seconds
-  -h, --help                 Print help
-  -V, --version              Print version
-```
-
-```
-Create a timer (5 minutes if no time is specified)
-
-Usage: clock-rs timer [OPTIONS]
-
-Options:
-  -S, --seconds <SECONDS>  Add seconds to the timer
-  -M, --minutes <MINUTES>  Add minutes to the timer
-  -H, --hours <HOURS>      Add hours to the timer
-  -k, --kill               Terminate the application when the timer finishes
-  -h, --help               Print help
-```
-
-```
-Start a stopwatch
-
-Usage: clock-rs stopwatch
-
-Options:
-  -h, --help  Print help
-```
-
-> [!NOTE]
-> If no command is specified, the `clock` command is used by default.  
-> Therefore, running `$ clock-rs clock` or simply `$ clock-rs` will both display the current time.
-> 
-> The timer converts time units by itself, so that e.g. `$ clock-rs timer -M 90` starts a timer with 1 hour and 30 minutes.  
-> The maximum timer duration is 99 hours, 59 minutes and 59 seconds.
-
-Press <kbd>P</kbd> to toggle the pause on the timer or stopwatch, and <kbd>R</kbd> to restart.  
-To exit the application, press <kbd>Escape</kbd>, <kbd>Q</kbd>, or <kbd>Ctrl + C</kbd>.
-
-### Reloading the configuration
-
-You can reload the configuration file without restarting the application  
-by either pressing <kbd>Ctrl + R</kbd> or sending the `SIGUSR1` signal on Unix-like systems.  
-Note that this will overwrite any settings previously set by command-line arguments.
-
-### Shell completion
-
-Shell completion files are automatically generated and placed inside the `target/completions` directory.  
-The following shells are supported: `Bash`, `Zsh`, `Fish`, `PowerShell`, `Elvish`
-
-## Configuration
-
-`clock-rs` uses the [TOML](https://toml.io/en/) file format for its settings.
-By default, the configuration file is named `conf.toml` and is stored in the OS configuration directory, within the `clock-rs` subdirectory.
-
-| Platform | Configuration file path                                |
-| -------- | ------------------------------------------------------ |
-| Linux    | `~/.config/clock-rs/conf.toml`                         |
-| MacOS    | `~/Library/Application Support/clock-rs/conf.toml`     |
-| Windows  | `C:\Users\%USERNAME%\AppData\Local\clock-rs\conf.toml` |
-
-You can change this path by setting the `CONF_PATH` environment variable.  
-If you wish to run the application without automatically using the existing `conf.toml` file, you can set `CONF_PATH` to `None`.  
-
-Any argument passed in the command line will override the settings inside the `conf.toml` file.
-
-### Fields
-
-Here's a list of the available fields inside the `conf.toml` file.
-
-| Field                     | Description                                | Possible values                    | Default      |
-| ------------------------- | ------------------------------------------ | ---------------------------------- | ------------ | 
-| `general.color`           | Specify the color of the clock             | `"black"`, `"red"`, `"green"`, `"yellow"`, `"blue"`, `"magenta"`, `"cyan"`, or `"white"`. Optionally, prefix them with `"bright-"` or use a hex color code in the form of `"#rrggbb"`. | `"white"` |
-| `general.interval`        | Set the polling interval in milliseconds   | An unsigned integer, e.g. `250`.   | `200`        |
-| `general.blink`           | Set the colon to blink                     | `true` or `false`.                 | `false`      |
-| `general.bold`            | Use bold text                              | `true` or `false`.                 | `false`      |
-| `position.horizontal`     | Set the position along the horizontal axis | `"start"`, `"center"`, or `"end"`. | `"center"`   |
-| `position.vertical`       | Set the position along the vertical axis   | `"start"`, `"center"`, or `"end"`. | `"center"`   |
-| `date.fmt`                | Specify the date format                    | A string, e.g. `"%A, %B %d, %Y"`.  | `"%d-%m-%Y"` |
-| `date.use_12h`            | Use the 12h format                         | `true` or `false`.                 | `false`      |
-| `date.utc`                | Use UTC time                               | `true` or `false`.                 | `false`      |
-| `date.hide_seconds`       | Do not show seconds                        | `true` or `false`.                 | `false`      |
-
-### Example
-
-The `conf.toml` file could look like this:
-
-```toml
-[general]
-color = "magenta"
-interval = 250
-blink = true
-bold = true
-
-[position]
-horizontal = "center"
-vertical = "center"
-
-[date]
-fmt = "%A, %B %d, %Y"
-use_12h = true
-utc = true
-hide_seconds = true
-```
-
-The default configuration can be found [here](public/default.toml).
-
-## Contributing
-
-Feel free to report bugs, suggest features or contribute code.  
-Any help is appreciated!
+Color names, date format, timer/stopwatch, all unchanged from the original. See **[docs/ORIGINAL.md](docs/ORIGINAL.md)** or the [upstream repo](https://github.com/Oughie/clock-rs).
 
 ## License
 
-Copyright © 2024 Oughie
-
-This repository is licensed under the Apache License 2.0 - See [here](LICENSE) for more information.
+Apache 2.0. Original work © 2024 Oughie. Fork modifications © 2026 Damien Blackwood. See [LICENSE](LICENSE).

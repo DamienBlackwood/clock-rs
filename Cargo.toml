@@ -1,6 +1,6 @@
 [package]
 name = "clock-rs"
-version = "0.1.33"
+version = "0.2.0"
 authors = ["Oughie <oughery@gmail.com>"]
 description = "A modern, terminal-based digital clock"
 keywords = ["clock", "terminal", "time", "cli", "date"]
@@ -20,6 +20,7 @@ dirs = "6.0.0"
 serde = { version = "1.0.228", features = ["derive"] }
 thiserror = "2.0.18"
 toml = "0.9.11"
+toml_edit = "0.22"
 
 [target.'cfg(unix)'.dependencies]
 signal-hook = "0.4.3"

@@ -13,7 +13,7 @@ impl Args {
             if interval == 0 {
                 return Err(Error::ZeroInterval);
             }
-            config.general.interval = interval;
+            config.general.interval = Some(interval);
         }
 
         if self.blink {
